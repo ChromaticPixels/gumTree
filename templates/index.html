@@ -1,0 +1,721 @@
+<!DOCTYPE html><html>
+    <head>
+        <meta charset="utf-8" name="viewport" content="width=device-width">
+        <style>
+            #box {
+                height: 100000px;
+                width: 100000px;
+            }
+
+            #lines {
+                position: absolute;
+                top: 0;
+                left: 0;
+                pointer-events: none;
+            }
+            
+            .user {
+                display: inline-block;
+                background-color: #292b2f;
+                height: 64px;
+                width: 64px;
+                border-radius: 50%;
+                border: 2px solid #292b2f;
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                text-align: center;
+                line-height: 32px;
+                color: white;
+                cursor: move;
+            }
+            
+            svg {
+                 z-index: -999;
+            }
+            
+            svg > svg {
+                z-index: 999;
+            }
+
+            #coords {
+                position: fixed;
+                right: 0px;
+                top: 0px;
+                padding: 8px;
+                z-index: 99999;
+                pointer-events: none;
+                box-shadow: inset 0px 0px 0px 1000px #fff;
+            }
+
+            #edit {
+                position: fixed;
+                left: 0px;
+                top: 0px;
+                padding: 8px;
+                z-index: 99999;
+                pointer-events: none;
+                display: flex;
+                gap: 4px;
+                flex-direction: column;
+            }
+
+            #edit > * {
+                display: ruby;
+                width: max-content;
+                pointer-events: auto;
+            }
+
+            #edit > * > label {
+                box-shadow: inset 0px 0px 0px 1000px #fff;
+            }
+
+            #connect_color {
+                height: 1em;
+                width: 1em;
+                border-radius: 15%;
+                margin-bottom: -3px;
+                box-shadow: none;
+            }
+
+            .menu {
+                transform: translate(-5px, -5px);
+                width: 165px !important;
+                position: absolute;
+                background-color: #fff;
+                padding: 5px;
+                border: #aaa solid 1px;
+                border-radius: 5%;
+                display: flex !important;
+                flex-direction: column;
+                gap: 0.25em 0.5em;
+            }
+
+            .menu > button {
+                margin-right: 5px;
+            }
+
+            #selected_user {
+                min-height: 1.5em;
+                line-height: 1.5em;
+                margin: 0;
+            }
+
+            #name_disp {
+                background-color: #fff;
+                position: absolute;
+                display: none;
+                left: 0px;
+                top: 0px;
+                width: max-content;
+                height: 1.2em;
+                pointer-events: none;
+                z-index: 99999999999999999;
+            }
+        </style>
+    </head>
+    <body>
+        <div id="coords"></div>
+        <div id="edit">
+            <div id="name_disp"></div>
+            <div>
+                <label for="connect_select">loading: </label>
+                <select name="connect_select" id="connect_select"></select>
+                <div id="connect_color"></div>
+                <button name="connect_add" onclick="addConnectionType()">add connection type</button>
+                <button name="connect_delete" onclick="deleteConnectionType()">delete connection type</button>
+            </div>
+            <div>
+                <input type="checkbox" id="delete_mode" name="delete_mode">
+                <label for="delete_mode">delete mode</label>
+                <button name="delete_selected" onclick="deleteSelectedUsers()">delete selected users</button>
+                <button name="select_all_delete" onclick="selectDeletionAll()">select all for deletion</button>
+                <button name="select_flip_delete" onclick="handleDeletionFlip()">reverse user selection</button>
+            </div>
+            <div>
+                <button name="user_add" onclick="addUsers()">add users</button>
+                <button name="randomize" onclick="randomize()">randomize user locations</button>
+            </div>
+            <div>
+                <button name="outline_add" onclick="addOutlineType()">add outline type</button>
+                <button name="outline_delete" onclick="deleteOutlineType()">delete outline type</button>
+            </div>
+            <div>
+                <button name="center" onclick="center()">center camera location</button>
+                <input type="checkbox" id="dark_mode" name="dark_mode">
+                <label for="dark_mode">dark mode</label>
+            </div>
+        </div>
+        <div id="box"></div>
+        <svg id="lines" height="100000px" width="100000px"></svg>
+        <script src="https://unpkg.com/anim-event@1.0.17/anim-event.min.js"></script>
+        <script>
+            window.selectedUser = undefined;
+            window.selectedConnectionType = undefined
+            window.ondragstart = function() { return false; };
+            window.connecting = false;
+            window.openUserMenus = true;
+            window.outlineSelectHTML = '<option value="none">none</option>';
+            window.usersForDeletion = [];
+            function urlExists(url, callback) {
+                fetch(url, { method: 'head' })
+                    .then((status) => {
+                        callback(status.ok)
+                    });
+            }
+            function doToUser(id, func) {
+                fetch("/user", {
+                    method: "POST",
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({"id": id})
+                })
+                    .then((response) => response.json())
+                    .then((userdata) => {func(userdata)})
+            }
+            function displayUser(id, userdata) {
+                let avatar_url = userdata.avatar.split('?')[0] + "?size=64";
+                urlExists(avatar_url, function(exists) {
+                    if (!exists) {
+                       avatar_url = "static/assets/failed.png";
+                    }
+                });
+                let user_el = document.querySelector(`#u${id}`);
+                user_el.id = `u${id}`;
+                user_el.src = avatar_url;
+            }
+            function selectUser(id) {
+                window.selectedUser = id;
+                let user = document.querySelector("#selected_user");
+                user.innerHTML = `${tree.user_info[id].username}`;
+                return user;
+            };
+            function updateUser(id) {
+                doToUser(id, function(userdata) {
+                    console.log(userdata);
+                    displayUser(id, userdata[id])
+                    tree.user_info[id] = userdata[id];
+                });
+                selectUser(id);
+            };
+            function replaceUser(oldid, newid) {
+                let tree = window.tree,
+                    user_info = tree.user_info
+                if (user_info[newid]) {
+                    alert("user aleady exists");
+                    return;
+                }
+                doToUser(newid, function(userdata) {
+                    if (!(userdata[newid]["success"])) {
+                        alert("invalid user");
+                        return;
+                    }
+                    displayUser(oldid, userdata[newid]);
+                    user_info[oldid] = userdata[newid];
+                    console.log(user_info[oldid])
+                    window.tree = JSON.parse(JSON.stringify(tree).replaceAll(`"${oldid}"`, `"${newid}"`));
+                    document.querySelector(`#u${oldid}`).id = `u${newid}`;
+                    for (connectionLine of document.querySelectorAll(`#lines [id*="${oldid}"]`).values()) {
+                        connectionLine.id = connectionLine.id.replace(oldid, newid)
+                    }
+                    selectUser(newid);
+                });
+            }
+            function hexCode(int) {
+                return ("0" + parseInt(int).toString(16)).slice(-2);
+            }
+            function RGBToHex(rgb) {
+                return `#${(rgb.match(
+                    /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/
+                ).slice(1)).map(hexCode).join('')}`;
+            }
+            function colorToType(color, info) {
+                if (color.includes("rgb")) {
+                    color = RGBToHex(color);
+                }
+                return Object.keys(tree[info]).find(
+                    type=>tree[info][type].color == color
+                );
+            }
+            function addOutlineType() {
+                let name = prompt("name? no restrictions :>"),
+                    colorHex = prompt("color? must be in full hexadecimal (#AABBCC)");
+                if (!(name + colorHex)) {
+                    return;
+                }
+                if (!name) {
+                    alert("gotta put a name");
+                    addOutlineType();
+                    return;
+                }
+                if (!(/^#[0-9A-F]{6}$/i.test(colorHex))) {
+                    alert("invalid hex code");
+                    addOutlineType();
+                    return;
+                }
+                tree.outline_info[name] = {
+                    "outlines": [],
+                    "color": colorHex
+                }
+                window.outlineSelectHTML += `<option value="${name}">${name}</option>`
+            }
+            function deleteOutlineType() {
+                let name = prompt("enter the EXACT (CASE SENSITIVE) name of the type you want removed:");
+                if (name === null) {
+                    return;
+                }
+                if (!(Object.keys(tree.outline_info).includes(name))) {
+                    alert("invalid name");
+                    deleteOutlineType();
+                    return;
+                }
+                if (prompt("now do it again >:D (for confirmation)") !== name) {
+                    return;
+                }
+                tree.outline_info[name].outlines.forEach((id) => {
+                    document.querySelector(`#u${id}`).style.outline = "0px solid";
+                });
+                delete tree.outline_info[name];
+                window.outlineSelectHTML = window.outlineSelectHTML.replace(
+                    `<option value="${name}">${name}</option>`,
+                    ""
+                );
+            }
+            function selectConnectionType(type) {
+                if (type.target !== undefined) {
+                    type = type.target.value;
+                }
+                window.selectedConnectionType = type;
+                document.querySelector("#connect_color").outerHTML = `<div id="connect_color" style="background-color: ${tree.connection_info[type].color}"></div>`
+            }
+            function addConnectionType() {
+                let name = prompt("name? no restrictions :>"),
+                    colorHex = prompt("color? must be in full hexadecimal (#AABBCC)"),
+                    directional = prompt('only one arrow? "true" if yes, "false" if not (EXACT MATCH ONLY)')
+                if (!(name + colorHex + directional)) {
+                    return;
+                }
+                if (!name) {
+                    alert("gotta put a name");
+                    addConnectionType();
+                    return;
+                }
+                if (!(/^#[0-9A-F]{6}$/i.test(colorHex))) {
+                    alert("invalid hex code");
+                    addConnectionType();
+                    return;
+                }
+                if (!["true","false"].includes(directional.toLowerCase())) {
+                    alert("invalid arrow answer");
+                    addConnectionType();
+                    return;
+                }
+                tree.connection_info[name] = {
+                    "connections": [],
+                    "color": colorHex,
+                    "directional": Boolean(directional.replace("false",""))
+                }
+                document.querySelector("#connect_select").innerHTML += `<option value="${name}">${name}</option>`
+            }
+            function deleteConnectionType() {
+                let name = prompt("enter the EXACT (CASE SENSITIVE) name of the type you want removed:");
+                if (name === null) {
+                    return;
+                }
+                if (!(Object.keys(tree.connection_info).includes(name))) {
+                    alert("invalid name");
+                    deleteConnectionType();
+                    return;
+                }
+                if (!(prompt("now do it again >:D (for confirmation)") == name)) {
+                    return;
+                }
+                tree.connection_info[name].connections.forEach(([id1, id2]) => {
+                    try {
+                        document.querySelector(`#l${id1}-${id2}`).remove();
+                    } catch (e) {
+                        if (e instanceof TypeError) {
+                            document.querySelector(`#l${id2}-${id1}`).remove();
+                        } else {
+                            throw e;
+                        }
+                    }
+                });
+                delete tree.connection_info[name];
+                document.querySelector(`[value=${name}]`).remove()
+                if (window.selectedConnectionType == name) {
+                    selectConnectionType(document.querySelector("#connect_select > [value]").value);
+                }
+            }
+            document.querySelector("#connect_select").onchange = selectConnectionType;
+            function updateConnection([id1, id2], type = undefined) {
+                if (document.querySelector(`#l${id2}-${id1}`)) {
+                    [id1, id2] = [id2, id1];
+                }
+                if (!document.querySelector(`#l${id1}-${id2}`)) {
+                    document.querySelector('#lines').innerHTML += `<svg id="l${id1}-${id2}"><line class="line" x1="0" y1="0" x2="200" y2="200" style="stroke:rgb(255,0,0);stroke-width:2"/><polygon class="a1" points="0 0, 16 9, 9 16" fill="black" onclick="rotate()" mydatadeg="0" style="transform: translateX(0%);"/> <polygon class="a2" points="0 0, 16 9, 9 16" fill="black" onclick="rotate()" mydatadeg="0" style="transform: translateX(0%);"/> </svg>`
+                }
+                let u1 = document.querySelector(`#u${id1}`).getBoundingClientRect(),
+                    u2 = document.querySelector(`#u${id2}`).getBoundingClientRect(),
+                    attr = {
+                        'x1': u1.left + window.pageXOffset + 32,
+                        'x2': u2.left + window.pageXOffset + 32,
+                        'y1': u1.top + window.pageYOffset + 32,
+                        'y2': u2.top + window.pageYOffset + 32
+                    },
+                    connection = document.querySelector(`#l${id1}-${id2}`),
+                    line = connection.querySelector('.line');
+                setAttributes(line, attr);
+                let arrow1 = connection.querySelector('.a1'),
+                    arrow2 = connection.querySelector('.a2'),
+                    point1 = line.getPointAtLength(32.0),
+                    point2 = line.getPointAtLength(line.getTotalLength() - 32.0),
+                    angle = Math.atan2(attr.y2 - attr.y1, attr.x2 - attr.x1) * (180 / Math.PI);
+                arrow1.style.transform = `translate(${point1.x}px, ${point1.y}px) rotate(${angle - 45}deg)`;
+                arrow2.style.transform = `translate(${point2.x}px, ${point2.y}px) rotate(${angle - 225}deg)`;
+                if (type == undefined) { // connection exists
+                    return;
+                }
+                let cdata = tree.connection_info[type],
+                    color = cdata.color;
+                [line.style.stroke, arrow1.style.fill, arrow2.style.fill] = [color, color, color];
+                if (cdata.directional) {
+                    arrow2.style.fill = "none"
+                }
+            }
+            function selectOutlineType(type) {
+                if (type.target == undefined) {
+                    return;
+                }
+                type = type.target.value;
+                let user = window.selectedUser,
+                    outline_info = tree.outline_info,
+                    userElement = document.querySelector(`#u${user}`),
+                    formerColor = userElement.style.outlineColor;
+                if (type == "none") {
+                    userElement.style.outline = `5px none`;
+                } else {
+                    tree.outline_info[type].outlines.push(user);
+                    userElement.style.outline = `5px solid ${outline_info[type].color}`;
+                }
+                if (!(formerColor.replace("currentcolor", ""))) {
+                    return;
+                }
+                let formerType = colorToType(formerColor, "outline_info"),
+                    formerTypeList = outline_info[formerType].outlines;
+                tree.outline_info[formerType].outlines.splice(
+                    formerTypeList.indexOf(user),
+                    1
+                );
+            }
+            function outlineUsers(odata) {
+                for (let id of odata.outlines) {
+                    document.querySelector(`#u${id}`).style.outline = `5px solid ${odata.color}`;
+                };
+            }
+            function openUserMenu(e) {
+                e.preventDefault();
+                document.querySelector("#name_disp").style.display = "none";
+                if (document.querySelector("#delete_mode").checked) {
+                    return;
+                }
+                if (window.openUserMenus) {
+                    let user = e.target,
+                        outlineType = "none",
+                        outlineColor = user.style.outlineColor,
+                        bound = document.querySelector("#lines").getBoundingClientRect();
+                    if (outlineColor) {
+                        outlineType = colorToType(outlineColor, "outline_info");
+                    }
+                    edit.innerHTML += `<div class="menu" style="left: ${e.x + 5}px; top: ${e.y + 5}px;"><p id="selected_user">none</p><div><button onclick="updateUser(window.selectedUser)">refresh data</button><button onclick="replaceUser(window.selectedUser, prompt('gimme the new id'))">replace id</button></div><div><label for="outline_select">outline: </label><select name="outline_select" id="outline_select">${window.outlineSelectHTML.replace(`>${outlineType}`,`selected>${outlineType}`)}</select></div></div>`
+                    selectUser(user.id.slice(1));                    
+                    document.querySelector("#outline_select").onchange = selectOutlineType;
+                }
+                window.openUserMenus = true;
+                let typeSelector = document.querySelector("#connect_select")
+                typeSelector.onchange = selectConnectionType;
+                typeSelector.value = colorToType(
+                    document.querySelector("#connect_color").style.backgroundColor,
+                    "connection_info"
+                );
+                
+            }
+            function moveDragging(e) {
+                window.connecting = false;
+                let user = window.draggedUser,
+                    id = user.id.slice(1);
+                user.style.top = (e.pageY - user.offsetY) + 'px';
+                user.style.left = (e.pageX - user.offsetX) + 'px';
+                for (connectionLine of document.querySelectorAll(`#lines [id*="${id}"]`).values()) {
+                    updateConnection([connectionLine.id.replace(id,'').replace(/[^0-9\.]+/g, ''), id]);
+                }
+            }
+            function dragConnection(e) {
+                let endUser = e.target,
+                    user = window.draggedUser,
+                    connection_info = tree.connection_info;
+                if (endUser.isSameNode(user) || endUser.className !== "user" || !window.connecting) {
+                    window.connecting = false;
+                    window.removeEventListener('pointerup', AnimEvent.remove(dragConnection));
+                    return;
+                }
+                window.openUserMenus = false;
+                let id = user.id.slice(1),
+                    id2 = endUser.id.slice(1),
+                    type = window.selectedConnectionType,
+                    connectionLine = document.querySelector(`#l${id}-${id2}, #l${id2}-${id}`);
+                if (connectionLine) {
+                    let connectionType = colorToType(connectionLine.firstChild.style.stroke, "connection_info");
+                    let connectedTypeConnections = connection_info[connectionType].connections;
+                    tree.connection_info[connectionType].connections = connectedTypeConnections.filter(
+                        cnect => ![id, id2].every(i => cnect.includes(i))
+                    )
+                    connectionLine.remove()
+                } else {
+                    tree.connection_info[type].connections.push([id, id2]);
+                    updateConnection([id2, id], type);
+                }
+                window.connecting = false;
+                window.removeEventListener('pointerup', AnimEvent.remove(dragConnection));
+            }
+            function handleDrags(e) {
+                let user = e.target;
+                window.draggedUser = user;
+                switch (e.button) {
+                    case 0: // lmb
+                        user.offsetX = e.pageX - parseInt(window.getComputedStyle(user).left),
+                        user.offsetY = e.pageY - parseInt(window.getComputedStyle(user).top);
+                        window.addEventListener('pointermove', AnimEvent.add(moveDragging));
+                        window.addEventListener('wheel', AnimEvent.add(moveDragging));
+                    case 2: // rmb
+                        window.connecting = true;
+                        window.addEventListener('pointerup', AnimEvent.add(dragConnection));
+                }
+            }
+            function toggleDeletion(change) {
+                if (change.target.checked) {
+                    document.querySelectorAll("#box > *").forEach((user) => {
+                        user.style.outline = "0px solid"
+                        user.style.cursor = "pointer"
+                    });
+                    return;
+                }
+                window.usersForDeletion = [];
+                document.querySelectorAll("#box > *").forEach((user) => {
+                    user.style.outline = "0px solid"
+                    user.style.cursor = "move"
+                });
+                for (let odata of Object.values(tree.outline_info)) {
+                    outlineUsers(odata);
+                }
+            }
+            function wipeIdFromConnections(id) {
+                Object.entries(tree.connection_info).forEach(([ctype, cdata]) => {
+                    for (let [index, connection] of cdata.connections.entries()) {
+                        if (connection.includes(id)) {
+                            let id2 = connection.filter(e => ![id].includes(e))[0];
+                            tree.connection_info[ctype].connections.splice(index, 1);
+                            document.querySelector(`#l${id}-${id2}, #l${id2}-${id}`).remove();
+                        }
+                    }
+                });
+            }
+            function wipeIdFromOutlines(id) {
+                for (let otype of Object.keys(tree.outline_info)) {
+                    let outlines = tree.outline_info[otype].outlines;
+                    if (outlines.includes(id)) {
+                        tree.outline_info[otype].outlines.splice(outlines.indexOf(id), 1);
+                    }
+                }
+            }
+            function deleteSelectedUsers() {
+                if (!prompt("you sure? type anything to confirm: ")) {
+                    return;
+                }
+                for (let id of window.usersForDeletion) {
+                    wipeIdFromConnections(id);
+                    wipeIdFromOutlines(id);
+                    document.querySelector(`#u${id}`).remove();
+                    delete tree.user_info[id];
+                }
+                window.usersForDeletion = [];
+            }
+            function handleDeletionAdd(id) {
+                if (!id) {
+                    return;
+                }
+                window.usersForDeletion.push(id);
+                console.log(id);
+                document.querySelector(`#u${id}`).style.outline = "5px solid red";
+            }
+            function handleDeletionRemove(id) {
+                window.usersForDeletion.splice(window.usersForDeletion.indexOf(id), 1);
+                document.querySelector(`#u${id}`).style.outline = "0px solid";
+            }
+            function selectDeletionAll() {
+                if (!document.querySelector("#delete_mode").checked) {
+                    return;
+                }
+                window.usersForDeletion = [];
+                console.log(window.usersForDeletion);
+                Object.keys(tree.user_info).map(handleDeletionAdd);
+                console.log(window.usersForDeletion);
+            }
+            function handleDeletionFlip() {
+                if (!document.querySelector("#delete_mode").checked) {
+                    return;
+                }
+                let oldSelected = window.usersForDeletion;
+                selectDeletionAll();
+                oldSelected.map(handleDeletionRemove);
+            }
+            function handleDelete(e) {
+                let user = e.target,
+                    id = user.id.slice(1);
+                switch(e.button) {
+                    case 0: // lmb
+                        if (window.usersForDeletion.includes(id)) {
+                            handleDeletionRemove(id);
+                        } else {
+                            handleDeletionAdd(id);
+                        }
+                }
+            }
+            function handlePointerDown(e) {
+                let menu = document.querySelector(".menu")
+                if (menu && !menu.contains(e.target)) {
+                    menu.remove();
+                    window.selectedUser = undefined;
+                }
+                if (e.target.className !== "user") {
+                    return;
+                }
+                if (document.querySelector("#delete_mode").checked) {
+                    handleDelete(e);
+                } else {
+                    handleDrags(e);
+                }
+            }
+            function enableUserMenus(par_el) {
+                par_el.childNodes.forEach((user) => {
+                    user.addEventListener('contextmenu', openUserMenu);
+                })
+            }
+            document.querySelector("#delete_mode").onchange = toggleDeletion;
+            function placeUser(user) {
+                let bound = document.querySelector("#lines").getBoundingClientRect();
+                user.style.left = `${Math.random() * (window.screen.width - 256) + 32 + (bound.width / 2)}px`;
+                user.style.top = `${Math.random() * (window.screen.height - 256) + 32 + (bound.height / 2)}px`;
+            }
+            function createUserEl([id, udata]) {
+                let avatar_url = udata.avatar.split('?')[0] + "?size=64";
+                document.querySelector("#box").innerHTML += `<img id="u${id}" data-connectedwith="" class="user" src="${avatar_url}" alt="refresh me" style="outline: 0px solid;"></img>`;}
+            function addUsers() {
+                let rawList = prompt("enter a comma-separated (NO SPACES) list of ids: \ninvalid ids will NOT be alerted because i goddamn hate async functions and i don't feel like dealing with looping them\n\nadded users will be randomly dropped in the page's center (hint: use the button)");
+                if (!rawList) {
+                    return;
+                }
+                for (let id of rawList.split(",")) {
+                    if (!/^\d+$/.test(id) || document.querySelector(`#u${id}`)) {
+                        continue;
+                    }
+                    doToUser(id, function(userdata) {
+                        let success = userdata[id].success;
+                        console.log(id, success);
+                        if (!success) {
+                            return;
+                        }
+                        createUserEl([id, userdata[id]]);
+                        tree.user_info[id] = userdata[id];
+                        placeUser(document.querySelector(`#u${id}`));
+                    });
+                }
+            }
+            function hoverDiv(e) {
+                let target = e.target,
+                    nameDisp = document.querySelector("#name_disp");
+                if (
+                    !target.id || 
+                    !document.querySelector(`#box > #${target.id}`) || 
+                    window.selectedUser == target.id.slice(1)
+                ) {
+                    nameDisp.style.display = "none";
+                    return;
+                }
+                let userCoords = target.getBoundingClientRect();
+                nameDisp.textContent = tree.user_info[target.id.slice(1)].username;
+                nameDisp.style.display = "block";
+                nameDisp.style.left = `${userCoords.left - (nameDisp.offsetWidth / 2) + 32 + 2}px`;
+                nameDisp.style.top = `${userCoords.top - 24}px`;
+            }
+            function showCursorPos(e) {
+                document.querySelector("#coords").textContent = `${e.pageX}, ${e.pageY}`;
+            }
+            function handleMouseMove(e){
+                showCursorPos(e);
+                hoverDiv(e);
+            }
+            function toggleDarkMode(change) {
+                document.body.style.backgroundColor = {
+                    true: "black", false: "white"
+                }[change.target.checked]
+            }
+            document.querySelector("#dark_mode").onchange = toggleDarkMode;
+            function randomize() {
+                document.querySelector("#box").childNodes.forEach(placeUser)
+                Object.entries(tree.connection_info).forEach(([type, cdata]) => {
+                    cdata.connections.forEach(
+                        connection => {updateConnection(connection)}
+                    )
+                });
+            }
+            function center() {
+                let bound = document.querySelector("#lines").getBoundingClientRect();
+                window.scroll({
+                    top: bound.height / 2,
+                    left: bound.width / 2,
+                    behavior: "instant",
+                });
+            }
+            function setAttributes(e, a) {
+                Object.entries(a).forEach(([k, v]) => {
+                    e.setAttribute(k, v);
+                });
+            };
+            function spam(tree) {
+                center();
+                Object.entries(tree.user_info).forEach(createUserEl);
+                Object.entries(tree.connection_info).forEach(([ctype, cdata]) => {
+                    for (let connection of cdata.connections) {
+                        updateConnection(connection, ctype);
+                    }
+                    document.querySelector("#connect_select").innerHTML += `<option value="${ctype}">${ctype}</option>`
+                });
+                Object.entries(tree.outline_info).forEach(([otype, odata]) => {
+                    window.outlineSelectHTML += `<option value="${otype}">${otype}</option>`
+                    outlineUsers(odata);
+                });
+                window.selectedUser = undefined;
+                selectConnectionType(document.querySelector("#connect_select").firstElementChild.value);
+                enableUserMenus(document.querySelector("#box"));
+                randomize();
+                document.querySelector('[for="connect_select"]').innerHTML = "selected connection type:"
+            }
+            function resetWindowDragEvents() {
+                window.removeEventListener('pointermove', AnimEvent.remove(moveDragging))
+                window.removeEventListener('wheel', AnimEvent.remove(moveDragging));
+            }
+            window.addEventListener('pointerdown', handlePointerDown);
+            window.addEventListener('pointerup', resetWindowDragEvents);
+            window.addEventListener('pointermove', AnimEvent.add(handleMouseMove));
+            fetch("/tree", { method: "GET" })
+                .then((response) => response.json())
+                .then((resp_tree) => {
+                    window.tree = resp_tree;
+                    spam(resp_tree)
+                })
+        </script>
+    </body>
+</html>

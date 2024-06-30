@@ -1,0 +1,2 @@
+[console_scripts]
+greenletio = greenletio.cli:main

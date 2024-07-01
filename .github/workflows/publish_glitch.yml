@@ -1,8 +1,6 @@
 name: Publish to Glitch
 on:
-  push:
-    tags:
-      - v**
+  push
 
 jobs:
   sync:

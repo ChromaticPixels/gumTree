@@ -8,7 +8,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: lonnen/sync-branch-to-glitch-action@v0.0.4
+      - uses: lonnen/sync-branch-to-glitch-action@v0.0.3
         env:
           GLITCH_GIT_URL: ${{ secrets.GlitchGitURL }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

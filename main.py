@@ -13,6 +13,7 @@ import requests
 import time
 # os for bot token
 import os
+# asyncio for async
 import asyncio
 # numpy because i use numpy 90% of the time okay i'll probably need it later
 import numpy as np

@@ -8,9 +8,6 @@ import uvloop
 # json for storage
 import json
 
-# requests for user data
-import requests
-
 # os for bot token
 import os
 

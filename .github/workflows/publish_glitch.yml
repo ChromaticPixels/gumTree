@@ -1,4 +1,4 @@
-name: Publish to Glitch
+name: publish to Glitch
 on: workflow_dispatch
 
 jobs:
@@ -7,8 +7,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: lonnen/sync-branch-to-glitch-action@v0.0.4
-        env:
-          GLITCH_GIT_URL: ${{ secrets.GlitchGitURL }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_BRANCH: 'main'
+      - uses: kanadgupta/glitch-sync@main
+        with:
+          auth-token: '${{ secrets.authToken }}'
+          project-id: '${{ secrets.projectId }}'

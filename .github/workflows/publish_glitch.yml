@@ -1,6 +1,5 @@
 name: Publish to Glitch
-on:
-  push
+on: push
 
 jobs:
   sync:

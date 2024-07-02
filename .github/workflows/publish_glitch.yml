@@ -1,5 +1,5 @@
 name: Publish to Glitch
-on: push
+on: workflow_dispatch
 
 jobs:
   sync:

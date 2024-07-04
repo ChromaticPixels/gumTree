@@ -14,9 +14,6 @@ import os
 # asyncio for async
 import asyncio
 
-# numpy because i use numpy 90% of the time okay i'll probably need it later
-import numpy as np
-
 # hikari for api
 import hikari
 
@@ -41,8 +38,12 @@ rest_app = hikari.RESTApp()
 
 # runs uvloop, initiates quart & compresses quart
 uvloop.install()
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 app = Quart(__name__)
 Compress(app)
+
+# specifies avatar url for failed users
+default_avatar_url = "https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/failed.png?v=1719901676048"
 
 # home
 @app.route('/')
@@ -65,7 +66,23 @@ async def user_data(server=False, id=None):
     if not server:
         req_data = await request.get_json()
         id = int(req_data["id"])
-    # with restful api client
+    
+    # > hikari docs home rest-only app example 
+    #   has connection defined outside of async function
+    # > "oh cool lemme copy"
+    # > works in older version of hikari
+    # > "lemme update hikari"
+    # > latest docs has same definition scheme
+    # > no longer works in latest version
+    # > have to move connection definition into here for
+    #   some pecking reason
+    # > this took four hours
+    # why? has i ever?
+    rest_app = hikari.RESTApp()
+    
+    # starts connection
+    await rest_app.start()
+    # with rest client instance
     async with rest_app.acquire(os.environ['TOKEN'], "Bot") as client:
         # fetches user object
         try:
@@ -75,7 +92,7 @@ async def user_data(server=False, id=None):
             # notifies of failure & sets default user info
             success = False
             print(f"FAILED: {id}")
-            avatar = "static/assets/failed.png"
+            avatar = default_avatar_url
             username = f"error [ID: {id}]"
         else:
             success = True
@@ -84,12 +101,14 @@ async def user_data(server=False, id=None):
             # avatar if avatar exists, else default avatar
             avatar = str(
                 avatar if avatar is not None
-                else "static/assets/failed.png"
+                else user.default_avatar_url
             )
             # other user info
             username = user.username
             # prints username for the sake of logging
             print(user.username)
+    # closes connection
+    await rest_app.close()
     return {
         str(id): {
             "username": username,
@@ -141,6 +160,9 @@ async def update_tree():
         # WHY DO I HAVE TO WAIT 0.5 SECONDS TO PREVENT RATELIMITING I DON'T GET IT
         # LEGIT 0.05 SHOULD BE MORE THAN ENOUGH BUT NO
         # CMON MAN
+        
+        # looking at this a year later, perhaps i know why
+        # TODO: check if this is actually halting the loop for 0.5s
         await asyncio.sleep(0.5)
     # returns tree data
     return await gum_tree()

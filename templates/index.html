@@ -1,6 +1,16 @@
 <!DOCTYPE html><html>
     <head>
+        <title>gumTree</title>
         <meta charset="utf-8" name="viewport" content="width=device-width">
+        <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/apple-touch-icon.png?v=1720053554579">
+        <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/favicon-32x32.png?v=1720053555954">
+        <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/favicon-16x16.png?v=1720053555772">
+        <link rel="manifest" href="https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/site.webmanifest?v=1720053855641">
+        <link rel="mask-icon" href="https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/safari-pinned-tab.svg?v=1720053557777" color="#7136bd">
+        <link rel="shortcut icon" href="https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/favicon.ico?v=1720053555053">
+        <meta name="msapplication-TileColor" content="#603cba">
+        <meta name="msapplication-config" content="/static/browserconfig.xml">
+        <meta name="theme-color" content="#ffffff">
         <style>
             #box {
                 height: 100000px;
@@ -157,11 +167,14 @@
             window.openUserMenus = true;
             window.outlineSelectHTML = '<option value="none">none</option>';
             window.usersForDeletion = [];
+            window.defaultAvatarURL = "https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/failed.png?v=1719901676048"
             function urlExists(url, callback) {
-                fetch(url, { method: 'head' })
-                    .then((status) => {
-                        callback(status.ok)
-                    });
+                fetch(url, {
+                  method: 'get',
+                  mode: 'no-cors'
+                }).then((status) => {
+                    callback(status.ok)
+                });
             }
             function doToUser(id, func) {
                 fetch("/user", {
@@ -179,7 +192,7 @@
                 let avatar_url = userdata.avatar.split('?')[0] + "?size=64";
                 urlExists(avatar_url, function(exists) {
                     if (!exists) {
-                       avatar_url = "static/assets/failed.png";
+                       avatar_url = window.defaultAvatarURL;
                     }
                 });
                 let user_el = document.querySelector(`#u${id}`);

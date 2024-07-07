@@ -43,7 +43,7 @@ app = Quart(__name__)
 Compress(app)
 
 # specifies avatar url for failed users
-default_avatar_url = "https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/failed.png?v=1719901676048"
+default_avatar_url = "https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/failed.webp?size=64"
 
 # home
 @app.route('/')
@@ -96,23 +96,24 @@ async def user_data(server=False, id=None):
             username = f"error [ID: {id}]"
         else:
             success = True
-            # gets avatar url so that the ternary below isn't ugly
-            avatar = user.display_avatar_url
-            # avatar if avatar exists, else default avatar
-            avatar = str(
-                avatar if avatar is not None
-                else user.default_avatar_url
-            )
+            # gets avatar url
+            avatar = str(user.display_avatar_url)
+            # if avatar isn't default
+            if "embed" not in avatar.split("/avatars/")[0]:
+              # convert to webp (default ones don't support a webp request)
+              avatar = avatar.replace(".png", ".webp")
             # other user info
             username = user.username
             # prints username for the sake of logging
             print(user.username)
     # closes connection
     await rest_app.close()
+    print(avatar)
     return {
         str(id): {
             "username": username,
-            "avatar": avatar, # avatar url
+            # sets img size
+            "avatar": avatar.split("?")[0] + "?size=64",
             "success": success
         }
     }

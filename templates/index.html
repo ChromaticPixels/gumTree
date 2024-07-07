@@ -1,7 +1,7 @@
 <!DOCTYPE html><html>
     <head>
         <title>gumTree</title>
-        <meta charset="utf-8" name="viewport" content="width=device-width">
+        <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1">
         <link rel="apple-touch-icon" sizes="180x180" href="https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/apple-touch-icon.png?v=1720053554579">
         <link rel="icon" type="image/png" sizes="32x32" href="https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/favicon-32x32.png?v=1720053555954">
         <link rel="icon" type="image/png" sizes="16x16" href="https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/favicon-16x16.png?v=1720053555772">
@@ -158,7 +158,7 @@
         </div>
         <div id="box"></div>
         <svg id="lines" height="100000px" width="100000px"></svg>
-        <script src="https://unpkg.com/anim-event@1.0.17/anim-event.min.js"></script>
+        <script>/*! AnimEvent v1.0.17 (c) anseki https://github.com/anseki/anim-event */var AnimEvent=function(n){var e={};function t(r){if(e[r])return e[r].exports;var o=e[r]={i:r,l:!1,exports:{}};return n[r].call(o.exports,o,o.exports,t),o.l=!0,o.exports}return t.m=n,t.c=e,t.d=function(n,e,r){t.o(n,e)||Object.defineProperty(n,e,{enumerable:!0,get:r})},t.r=function(n){"undefined"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(n,Symbol.toStringTag,{value:"Module"}),Object.defineProperty(n,"__esModule",{value:!0})},t.t=function(n,e){if(1&e&&(n=t(n)),8&e)return n;if(4&e&&"object"==typeof n&&n&&n.__esModule)return n;var r=Object.create(null);if(t.r(r),Object.defineProperty(r,"default",{enumerable:!0,value:n}),2&e&&"string"!=typeof n)for(var o in n)t.d(r,o,function(e){return n[e]}.bind(null,o));return r},t.n=function(n){var e=n&&n.__esModule?function(){return n.default}:function(){return n};return t.d(e,"a",e),e},t.o=function(n,e){return Object.prototype.hasOwnProperty.call(n,e)},t.p="",t(t.s=0)}([function(n,e,t){"use strict";t.r(e);var r,o=[],i=window.requestAnimationFrame||window.mozRequestAnimationFrame||window.webkitRequestAnimationFrame||window.msRequestAnimationFrame||function(n){return setTimeout(n,1e3/60)},u=window.cancelAnimationFrame||window.mozCancelAnimationFrame||window.webkitCancelAnimationFrame||window.msCancelAnimationFrame||function(n){return clearTimeout(n)},a=Date.now();function l(){var n,e;r&&(u.call(window,r),r=null),o.forEach((function(e){var t;(t=e.event)&&(e.event=null,e.listener(t),n=!0)})),n?(a=Date.now(),e=!0):Date.now()-a<500&&(e=!0),e&&(r=i.call(window,l))}function c(n){var e=-1;return o.some((function(t,r){return t.listener===n&&(e=r,!0)})),e}var f={add:function(n){var e;return-1===c(n)?(o.push(e={listener:n}),function(n){e.event=n,r||l()}):null},remove:function(n){var e;(e=c(n))>-1&&(o.splice(e,1),!o.length&&r&&(u.call(window,r),r=null))}};e.default=f}]).default;</script>
         <script>
             window.selectedUser = undefined;
             window.selectedConnectionType = undefined
@@ -167,7 +167,7 @@
             window.openUserMenus = true;
             window.outlineSelectHTML = '<option value="none">none</option>';
             window.usersForDeletion = [];
-            window.defaultAvatarURL = "https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/failed.png?v=1719901676048"
+            window.defaultAvatarURL = "https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/failed.webp?size=64"
             function urlExists(url, callback) {
                 fetch(url, {
                   method: 'get',
@@ -189,7 +189,7 @@
                     .then((userdata) => {func(userdata)})
             }
             function displayUser(id, userdata) {
-                let avatar_url = userdata.avatar.split('?')[0] + "?size=64";
+                let avatar_url = userdata.avatar;
                 urlExists(avatar_url, function(exists) {
                     if (!exists) {
                        avatar_url = window.defaultAvatarURL;
@@ -623,8 +623,8 @@
                 user.style.top = `${Math.random() * (window.screen.height - 256) + 32 + (bound.height / 2)}px`;
             }
             function createUserEl([id, udata]) {
-                let avatar_url = udata.avatar.split('?')[0] + "?size=64";
-                document.querySelector("#box").innerHTML += `<img id="u${id}" data-connectedwith="" class="user" src="${avatar_url}" alt="refresh me" style="outline: 0px solid;"></img>`;}
+                let avatar_url = udata.avatar;
+                document.querySelector("#box").innerHTML += `<img id="u${id}" data-connectedwith="" class="user" src="${avatar_url}" alt="refresh me" style="outline: 0px solid;" width="64px" height="64px"></img>`;}
             function addUsers() {
                 let rawList = prompt("enter a comma-separated (NO SPACES) list of ids: \ninvalid ids will NOT be alerted because i goddamn hate async functions and i don't feel like dealing with looping them\n\nadded users will be randomly dropped in the page's center (hint: use the button)");
                 if (!rawList) {

@@ -41,6 +41,7 @@ uvloop.install()
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 app = Quart(__name__)
 Compress(app)
+app.config["COMPRESS_MIMETYPES"].extend(["image","text/javascript"])
 
 # specifies avatar url for failed users
 default_avatar_url = "https://cdn.glitch.global/269cebce-0e77-45c8-8657-9e20c05be5bd/failed.webp?size=64"
@@ -112,8 +113,8 @@ async def user_data(server=False, id=None):
     return {
         str(id): {
             "username": username,
-            # sets img size
-            "avatar": avatar.split("?")[0] + "?size=64",
+            # remove size for now (will be added later to match screen size)
+            "avatar": avatar.split("?")[0],
             "success": success
         }
     }
